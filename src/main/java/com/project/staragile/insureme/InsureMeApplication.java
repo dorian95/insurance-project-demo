@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class InsureMeApplication {
 
 	public static void main(String[] args) {
-		System.out.println("Testing Webhook");
+		System.out.println("Testing Webhook 3");
 		SpringApplication.run(InsureMeApplication.class, args);
 	}
 
