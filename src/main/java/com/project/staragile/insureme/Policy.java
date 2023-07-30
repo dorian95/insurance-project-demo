@@ -23,11 +23,8 @@ public class Policy {
 	
 	private String policyEndDate;
 	
-	
-
 	public Policy() {
 		super();
-		// TODO Auto-generated constructor stub
 	}
 
 	public Policy(int policyId, String policyHolderName, String policyType, double policyPrice, String policyStartDate,
