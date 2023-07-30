@@ -16,7 +16,7 @@ public class PolicyController {
 	
 	@GetMapping("/hello")
 	public String sayHello() {
-		return "hello";
+		return "hello world";
 	}
 	
 	@GetMapping("/createPolicy")
