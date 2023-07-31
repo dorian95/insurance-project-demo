@@ -1,31 +1,64 @@
 node{
-        stage('git checkout'){
-            echo "checking out the code from github"
-            git 'https://github.com/shubhamkushwah123/insurance-project-demo.git'
+    stage('Git Checkout'){
+        cleanWs()
+        git poll: true, url:'https://github.com/bhagivamsi/insurance-project-demo.git'
+    }
+    
+    stage('Test & Package'){
+        sh 'mvn package'
+    }
+    
+    stage('Docker build'){
+        sh 'docker build -t vkbhagi/insure-me:1.0 .'
+    }
+    
+    stage('Docker push'){
+        withCredentials([usernamePassword(credentialsId: 'docker_creds', passwordVariable: 'docker_pass', usernameVariable: 'docker_user')]) {
+            sh "docker login -u ${docker_user} -p ${docker_pass}"
+            sh "docker push vkbhagi/insure-me:1.0"
         }
-        
-        stage('maven build'){
-            sh 'mvn clean package'
-        }
-        
-        stage('build docker image'){
-            sh 'docker build -t shubhamkushwah123/insure-me:1.0 .'
-        }
-        
-        stage('push docker image to docker hub registry')
-        {
-            echo 'pushing images to registry'
+    }
+    
+    stage("Configure Test Server"){
+        cleanWs()
+        git branch: 'main', poll: false, url: 'https://github.com/bhagivamsi/ansible-insure-me.git'
+        ansiblePlaybook become: true, credentialsId: 'ubuntu', disableHostKeyChecking: true, installation: 'ansible', 
+            inventory: 'hosts', 
+            playbook: 'playbook-test-server.yml'
+    }
+    
+    stage('Test Server Deployment')
+    {
+        withCredentials([sshUserPrivateKey(credentialsId: 'ubuntu', keyFileVariable: 'ubuntu_file', usernameVariable: 'ubuntu')]) {
+            sh "ssh -o StrictHostKeyChecking=no -i ${ubuntu_file} ubuntu@${test_server_name} docker stop insure-me"
+            sh "ssh -o StrictHostKeyChecking=no -i ${ubuntu_file} ubuntu@${test_server_name} docker rm insure-me"
+            sh "ssh -o StrictHostKeyChecking=no -i ${ubuntu_file} ubuntu@${test_server_name} docker run -itd -p 8080:8081 --name insure-me vkbhagi/insure-me:1.0"
             
-            withCredentials([string(credentialsId: 'docker-hub-password', variable: 'dockerHubPassword')]) {
-                sh "docker login -u shubhamkushwah123 -p ${dockerHubPassword}"
-                sh 'docker push shubhamkushwah123/insure-me:1.0'
-            }
         }
-        
-        stage('configure test-server and deploy insure-me'){
-            echo "configuring test-server"
-          //  sh 'ansible-playbook configure-test-server.yml'
-            ansiblePlaybook become: true, credentialsId: 'ssh-key-ansibles', disableHostKeyChecking: true, installation: 'ansible', inventory: '/etc/ansible/hosts', playbook: 'configure-test-server.yml'
+    }
+    
+    stage('Selenium Test'){
+         cleanWs()
+        git poll: false, branch: 'main', url: 'https://github.com/bhagivamsi/insure-me-selenium.git'  
+        sh 'mvn package'
+        sh 'sudo java -ea -jar target/insure-me-selenium-1.0-SNAPSHOT.jar'
+    }
+    
+     stage("Configure Prod Server"){
+        cleanWs()
+        git branch: 'main', poll: false, url: 'https://github.com/bhagivamsi/ansible-insure-me.git'
+        ansiblePlaybook become: true, credentialsId: 'ubuntu', disableHostKeyChecking: true, installation: 'ansible', 
+            inventory: 'hosts', 
+            playbook: 'playbook-prod-server.yml'
+    }
+    
+    stage('Prod Server Deployment'){
+        withCredentials([sshUserPrivateKey(credentialsId: 'ubuntu', keyFileVariable: 'ubuntu_file', usernameVariable: 'ubuntu')]) {
+            sh "ssh -o StrictHostKeyChecking=no -i ${ubuntu_file} ubuntu@${prod_server_name} docker stop insure-me || true"
+            sh "ssh -o StrictHostKeyChecking=no -i ${ubuntu_file} ubuntu@${prod_server_name} docker rm insure-me || true"
+            sh "ssh -o StrictHostKeyChecking=no -i ${ubuntu_file} ubuntu@${prod_server_name} docker run -itd -p 8080:8081 --name insure-me vkbhagi/insure-me:1.0"
+            
         }
-        
+    }
+    
 }
