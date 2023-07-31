@@ -16,7 +16,7 @@ public class PolicyController {
 	
 	@GetMapping("/hello")
 	public String sayHello() {
-		return "hello world";
+		return "hello world, trigger webhook";
 	}
 	
 	@GetMapping("/createPolicy")
