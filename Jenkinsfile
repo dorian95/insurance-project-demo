@@ -1,5 +1,6 @@
 node{
     stage('Git Checkout'){
+        echo "checking out the code from github"
         cleanWs()
         git poll: true, url:'https://github.com/dorian95/insurance-project-demo.git'
     }
